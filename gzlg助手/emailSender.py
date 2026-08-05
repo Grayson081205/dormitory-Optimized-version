@@ -20,8 +20,18 @@ def get_beijing_time():
 
 
 def send_QQ_email_plain(content):
-    sender = user = 'zhangweiluo2005@qq.com'
-    passwd = 'mlqabdckjdfvbadj'
+    sender = os.getenv('SMTP_USER', '')
+    passwd = os.getenv('SMTP_PASS', '')
+    recipient = os.getenv('EMAIL_ADDRESS', '')
+    smtp_host = os.getenv('SMTP_HOST', 'smtp.qq.com')
+    smtp_port = int(os.getenv('SMTP_PORT', '465'))
+
+    if not recipient:
+        print('未配置 EMAIL_ADDRESS，跳过邮件发送')
+        return
+    if not sender or not passwd:
+        print('未配置 SMTP_USER/SMTP_PASS，跳过邮件发送')
+        return
 
     # 格式化北京时间为 "年-月-日 星期几 时:分" 格式
     formatted_date = get_beijing_time()
@@ -33,21 +43,19 @@ def send_QQ_email_plain(content):
     result_status = "✅成功" if "成功" in content else "❌失败"
     
     # 设置邮件主题为今天的日期和星期以及签到结果状态
-    msg['From'] = f'{sender}'
-    msg['To'] = os.getenv('EMAIL_ADDRESS')
-    # msg['To'] = '3552971348@qq.com'
+    msg['From'] = sender
+    msg['To'] = recipient
     msg['Subject'] = f'查寝 {result_status} {formatted_date}'  # 设置邮件主题
 
     try:
         # 建立 SMTP 、SSL 的连接，连接发送方的邮箱服务器
-        smtp = smtplib.SMTP_SSL('smtp.qq.com', 465)
+        smtp = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
 
         # 登录发送方的邮箱账号
-        smtp.login(user, passwd)
+        smtp.login(sender, passwd)
 
         # 发送邮件：发送方，接收方，发送的内容
-        smtp.sendmail(sender, os.getenv('EMAIL_ADDRESS'), msg.as_string())
-        # smtp.sendmail(sender, '3552971348@qq.com', msg.as_string())
+        smtp.sendmail(sender, recipient, msg.as_string())
 
         print('邮件发送成功')
 

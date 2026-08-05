@@ -8,18 +8,18 @@ name: gotobed
 #    - cron: '50 10 * * *' # 10对应的是北京时间晚上六点 50是分钟 表示每天晚上六点五十执行，可以改成任意时间测试
 
 on:
- workflow_dispatch:  # 允许手动触发
- schedule: # 每晚上晚上 8 点 10 分行 时差为 +8
- - cron: '10 12 * * *'
+  workflow_dispatch:  # 允许手动触发
+  schedule:           # 每天北京时间 20:10（GitHub 使用 UTC）
+    - cron: '10 12 * * *'
 
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python 3.11
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -33,9 +33,10 @@ jobs:
           USERNAME: ${{ secrets.USERNAME }}
           PASSWORD: ${{ secrets.PASSWORD }}
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
-          TOKEN: ${{ secrets.TOKEN }}
           PRINCIPAL: ${{ secrets.PRINCIPAL }}
           CREDENTIAL: ${{ secrets.CREDENTIAL }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
         run: |
-          python gzlg助手/goToBed.py || echo "Script failed with exit code $?"
+          python "gzlg助手/goToBed.py"
         

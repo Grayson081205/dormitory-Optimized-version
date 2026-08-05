@@ -51,7 +51,12 @@
 USERNAME      # 学工平台的账号
 PASSWORD      # 学工平台的密码
 EMAIL_ADDRESS # 结果发送接收邮箱地址
+SMTP_USER     # QQ 邮箱发件账号
+SMTP_PASS     # QQ 邮箱 SMTP 授权码，不是邮箱登录密码
 ```
+
+当前邮件服务器默认使用 QQ 邮箱的 SSL 465 端口（`smtp.qq.com:465`）。
+`EMAIL_ADDRESS` 是收件地址，`SMTP_USER` 是发件地址；两者可以填写为同一个邮箱。
 
 **如果出现二次验证情况**，还需要在学工系统 -> 安全中心 -> 密保 中配置以下两个变量：
 
