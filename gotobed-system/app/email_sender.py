@@ -19,10 +19,10 @@ def get_beijing_time():
 
 
 def send_email(subject: str, content: str, to_address: str):
-    """发送邮件通知，配置从 Flask app config 读取"""
+    """发送邮件，返回是否发送成功。"""
     if not to_address:
         print(f'未配置邮箱，跳过邮件发送。结果：{content}')
-        return
+        return False
 
     smtp_host = current_app.config.get('SMTP_HOST', '')
     smtp_port = current_app.config.get('SMTP_PORT', 465)
@@ -31,7 +31,7 @@ def send_email(subject: str, content: str, to_address: str):
 
     if not smtp_user or not smtp_pass:
         print(f'SMTP 未配置，跳过邮件发送。结果：{content}')
-        return
+        return False
 
     msg = MIMEText(content, 'plain', 'utf-8')
     msg['From'] = smtp_user
@@ -39,13 +39,28 @@ def send_email(subject: str, content: str, to_address: str):
     msg['Subject'] = subject
 
     try:
-        smtp = smtplib.SMTP_SSL(smtp_host, smtp_port)
+        smtp = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
         smtp.login(smtp_user, smtp_pass)
         smtp.sendmail(smtp_user, to_address, msg.as_string())
         smtp.quit()
         print(f'邮件发送成功 -> {to_address}')
+        return True
     except Exception as e:
         print(f'邮件发送失败: {e}')
+        return False
+
+
+def send_verification_code(to_address: str, code: str, purpose: str):
+    """发送注册或找回密码验证码。"""
+    action = '注册账号' if purpose == 'register' else '重置密码'
+    subject = f'查寝管理系统 - {action}验证码'
+    content = (
+        f'您好，您正在进行{action}。\n\n'
+        f'验证码：{code}\n'
+        '验证码 10 分钟内有效，请勿将验证码告知他人。\n\n'
+        '如非本人操作，请忽略此邮件。'
+    )
+    return send_email(subject, content, to_address)
 
 
 def send_gotobed_result(content: str, to_address: str):

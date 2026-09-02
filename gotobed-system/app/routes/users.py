@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash
-from flask_login import login_required
+from flask_login import login_required, current_user
 import re
 
 from ..models import db, User
@@ -50,7 +50,8 @@ def _parse_cron_times(form) -> list:
 @users_bp.route('/')
 @login_required
 def user_list():
-    users = User.query.order_by(User.created_at.desc()).all()
+    query = User.query if current_user.is_admin else User.query.filter_by(owner_id=current_user.id)
+    users = query.order_by(User.created_at.desc()).all()
     return render_template('users/list.html', users=users)
 
 
@@ -65,6 +66,7 @@ def user_new():
             return render_template('users/form.html', presets=CRON_PRESETS, user=None)
 
         user = User(
+            owner_id=current_user.id if not current_user.is_admin else current_user.id,
             username=username,
             password_encrypted=encrypt_password(password),
             principal=request.form.get('principal', '').strip() or None,
@@ -93,6 +95,9 @@ def user_new():
 @login_required
 def user_edit(user_id):
     user = User.query.get_or_404(user_id)
+    if not current_user.is_admin and user.owner_id != current_user.id:
+        from flask import abort
+        abort(403)
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -127,6 +132,9 @@ def user_edit(user_id):
 @login_required
 def user_delete(user_id):
     user = User.query.get_or_404(user_id)
+    if not current_user.is_admin and user.owner_id != current_user.id:
+        from flask import abort
+        abort(403)
     username = user.username
     remove_user_job(user_id)
     db.session.delete(user)
@@ -139,6 +147,9 @@ def user_delete(user_id):
 @login_required
 def user_toggle(user_id):
     user = User.query.get_or_404(user_id)
+    if not current_user.is_admin and user.owner_id != current_user.id:
+        from flask import abort
+        abort(403)
     user.enabled = not user.enabled
     db.session.commit()
 
@@ -155,6 +166,9 @@ def user_test(user_id):
     """立即执行查寝测试，返回 JSON 结果"""
     from flask import jsonify
     user = User.query.get_or_404(user_id)
+    if not current_user.is_admin and user.owner_id != current_user.id:
+        from flask import abort
+        abort(403)
     from ..crypto import decrypt_password
     from ..tasks.gotobed import run_gotobed
 

@@ -2,6 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import json
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 
 db = SQLAlchemy()
 
@@ -9,10 +10,48 @@ db = SQLAlchemy()
 BJT = ZoneInfo('Asia/Shanghai')
 
 
+class Account(UserMixin, db.Model):
+    """网站登录账号。网站密码只保存哈希，不能反向解密。"""
+
+    __tablename__ = 'accounts'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    email_verified_at = db.Column(db.DateTime, nullable=True)
+    role = db.Column(db.String(20), nullable=False, default='user')
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(BJT))
+    last_login_at = db.Column(db.DateTime, nullable=True)
+
+    managed_users = db.relationship('User', backref='owner', lazy=True)
+
+    @property
+    def is_admin(self):
+        return self.role == 'admin'
+
+
+class EmailVerificationCode(db.Model):
+    """注册和找回密码使用的一次性邮箱验证码。"""
+
+    __tablename__ = 'email_verification_codes'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    email = db.Column(db.String(255), nullable=False, index=True)
+    purpose = db.Column(db.String(30), nullable=False, index=True)
+    code_hash = db.Column(db.String(255), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    consumed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(BJT))
+
+
 class User(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # 兼容旧数据库，首次升级时该字段允许为空，孤立账号会归到管理员名下。
+    owner_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True, index=True)
     username = db.Column(db.Text, nullable=False)
     password_encrypted = db.Column(db.Text, nullable=False)
     principal = db.Column(db.Text, nullable=True)

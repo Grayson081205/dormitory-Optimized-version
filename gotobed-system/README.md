@@ -1,6 +1,6 @@
 # 查寝管理系统 — 部署文档
 
-自托管的查寝管理 Web 系统，替代 GitHub Actions 方案，支持多用户管理和定时任务调度。
+自托管的查寝管理 Web 系统，替代 GitHub Actions 方案，支持邮箱注册、登录、密码找回、多用户管理和定时任务调度。
 
 ---
 
@@ -28,6 +28,7 @@
 - **邮件通知**：查寝结果自动发送到用户邮箱
 - **执行日志**：查看每次查寝的执行状态和结果
 - **密码加密**：用户密码使用 Fernet 对称加密存储
+- **邮箱账号体系**：邮箱验证码注册、邮箱登录、验证码找回密码
 - **Docker 部署**：单容器一键启动
 
 ---
@@ -86,6 +87,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 ```env
 # 管理员密码（登录 Web 后台用）
 ADMIN_PASSWORD=your-strong-password
+ADMIN_EMAIL=3570002759@qq.com
 
 # Flask session 密钥（随机字符串即可）
 SECRET_KEY=your-random-secret-key
@@ -141,7 +143,17 @@ cd gotobed-system
 pip install -r requirements.txt
 ```
 
-**2. 设置环境变量**
+**2. 配置环境变量**
+
+项目会自动读取 `gotobed-system/.env`。可直接复制模板后填写管理员邮箱、管理员密码和 SMTP 配置：
+
+```bash
+cp .env.example .env
+```
+
+配置完成后无需再执行 `export`。
+
+如果不使用 `.env` 文件，也可以手动设置环境变量：
 
 Windows PowerShell：
 
