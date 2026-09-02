@@ -1,6 +1,6 @@
 # @Time : 15/7/2024 下午9:53
-# @Author : G5116
-import smtplib, os
+import smtplib
+import os
 from datetime import datetime
 from email.mime.text import MIMEText
 
@@ -8,58 +8,53 @@ import pytz
 
 
 def get_beijing_time():
-    # 设置UTC和北京时间的时区
-    utc_zone = pytz.utc
-    beijing_zone = pytz.timezone('Asia/Shanghai')
-    # 获取当前的UTC时间，并添加UTC时区信息
-    utc_time = datetime.now(utc_zone)
-    # 将UTC时间转换为北京时间
-    beijing_time = utc_time.astimezone(beijing_zone)
-    # 格式化北京时间为 "年-月-日 星期几 时:分" 格式
-    return beijing_time.strftime('%Y-%m-%d %A %H:%M')
+    utc_time = datetime.now(pytz.utc)
+    return utc_time.astimezone(pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d %A %H:%M')
 
 
 def send_QQ_email_plain(content):
-    sender = os.getenv('SMTP_USER', '')
-    passwd = os.getenv('SMTP_PASS', '')
-    recipient = os.getenv('EMAIL_ADDRESS', '')
-    smtp_host = os.getenv('SMTP_HOST', 'smtp.qq.com')
+    sender = os.getenv('SMTP_USER', '').strip()
+    passwd = os.getenv('SMTP_PASS', '').strip()
+    recipient = os.getenv('EMAIL_ADDRESS', '').strip()
+    smtp_host = os.getenv('SMTP_HOST', 'smtp.qq.com').strip()
     smtp_port = int(os.getenv('SMTP_PORT', '465'))
 
     if not recipient:
         print('未配置 EMAIL_ADDRESS，跳过邮件发送')
-        return
+        return False
     if not sender or not passwd:
         print('未配置 SMTP_USER/SMTP_PASS，跳过邮件发送')
-        return
+        return False
 
-    # 格式化北京时间为 "年-月-日 星期几 时:分" 格式
-    formatted_date = get_beijing_time()
-
-    # 纯文本内容
     msg = MIMEText(f'签到结果：{content}', 'plain', 'utf-8')
-
-    # 判断签到结果是否成功
-    result_status = "✅成功" if "成功" in content else "❌失败"
-    
-    # 设置邮件主题为今天的日期和星期以及签到结果状态
+    result_status = '成功' if '成功' in content else '失败'
     msg['From'] = sender
     msg['To'] = recipient
-    msg['Subject'] = f'查寝 {result_status} {formatted_date}'  # 设置邮件主题
+    msg['Subject'] = f'查寝 {result_status} {get_beijing_time()}'
 
     try:
-        # 建立 SMTP 、SSL 的连接，连接发送方的邮箱服务器
-        smtp = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
-
-        # 登录发送方的邮箱账号
+        if smtp_port == 465:
+            smtp = smtplib.SMTP_SSL(smtp_host, 465, timeout=30)
+        else:
+            smtp = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
+            smtp.starttls()
         smtp.login(sender, passwd)
-
-        # 发送邮件：发送方，接收方，发送的内容
         smtp.sendmail(sender, recipient, msg.as_string())
-
-        print('邮件发送成功')
-
         smtp.quit()
-    except Exception as e:
-        print(e)
-        print('发送邮件失败')
+        print('邮件发送成功')
+        return True
+    except Exception as first_error:
+        if smtp_port == 465:
+            try:
+                smtp = smtplib.SMTP(smtp_host, 587, timeout=30)
+                smtp.starttls()
+                smtp.login(sender, passwd)
+                smtp.sendmail(sender, recipient, msg.as_string())
+                smtp.quit()
+                print('邮件发送成功（587 STARTTLS）')
+                return True
+            except Exception as fallback_error:
+                print(f'邮件发送失败（465 SSL: {first_error}; 587 STARTTLS: {fallback_error}）')
+                return False
+        print(f'邮件发送失败（{type(first_error).__name__}: {first_error}）')
+        return False
