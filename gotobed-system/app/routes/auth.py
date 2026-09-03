@@ -2,7 +2,7 @@ import re
 import secrets
 from datetime import datetime, timedelta
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, jsonify, get_flashed_messages
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -114,6 +114,11 @@ def register_send_code():
     else:
         error = _issue_code(email, 'register')
         flash(error or '验证码已发送，请查收邮件', 'danger' if error else 'success')
+    # 注册页通过 fetch 请求验证码时返回 JSON，避免整页刷新导致表单内容丢失。
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
+        messages = get_flashed_messages(with_categories=True)
+        category, message = messages[-1] if messages else ('success', '验证码已发送，请查收邮件')
+        return jsonify({'ok': category == 'success', 'message': message})
     return redirect(url_for('auth.register'))
 
 

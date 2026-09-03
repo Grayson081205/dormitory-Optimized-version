@@ -7,7 +7,7 @@
         <div class="auth-heading"><p class="eyebrow">创建新账号</p><h2>注册</h2><p>请使用常用邮箱完成验证。</p></div>
         <form method="POST" class="stack-form" id="register-form">
             <div class="field"><label for="email">邮箱地址</label><input type="email" class="form-control" id="email" name="email" autocomplete="email" required autofocus placeholder="name@example.com"></div>
-            <div class="field"><label for="code">邮箱验证码</label><div class="input-action"><input class="form-control" id="code" name="code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required placeholder="6 位验证码"><button class="btn btn-ghost" type="submit" formaction="{{ url_for('auth.register_send_code') }}" formmethod="POST" formnovalidate id="send-code">发送验证码</button></div><p class="form-help" id="code-hint">验证码有效期 10 分钟</p></div>
+            <div class="field"><label for="code">邮箱验证码</label><div class="input-action"><input class="form-control" id="code" name="code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required placeholder="6 位验证码"><button class="btn btn-ghost" type="button" id="send-code">发送验证码</button></div><p class="form-help" id="code-hint">验证码有效期 10 分钟</p></div>
             <div class="field"><label for="password">设置密码</label><input type="password" class="form-control" id="password" name="password" autocomplete="new-password" minlength="8" required placeholder="至少 8 位字符"><p class="form-help">密码至少 8 位</p></div>
             <div class="field"><label for="confirm_password">确认密码</label><input type="password" class="form-control" id="confirm_password" name="confirm_password" autocomplete="new-password" minlength="8" required placeholder="再次输入密码"></div>
             <button type="submit" class="btn btn-accent btn-full">创建账号</button>
@@ -20,6 +20,8 @@
 (function () {
     var button = document.getElementById('send-code');
     if (!button) return;
+    var emailInput = document.getElementById('email');
+    var hint = document.getElementById('code-hint');
     var key = 'gotobed-register-code-until';
     function startCooldown() {
         var left = Math.max(0, Math.ceil((Number(localStorage.getItem(key) || 0) - Date.now()) / 1000));
@@ -33,10 +35,36 @@
         }, 1000);
     }
     startCooldown();
-    button.addEventListener('click', function () {
+    button.addEventListener('click', async function () {
         if (button.disabled) return;
-        // 这里只记录结束时间，不立即禁用按钮，避免阻止当前表单提交。
-        localStorage.setItem(key, String(Date.now() + 60000));
+        if (!emailInput.checkValidity()) { emailInput.reportValidity(); return; }
+        button.disabled = true;
+        button.textContent = '发送中…';
+        hint.textContent = '正在发送验证码…';
+        hint.classList.remove('form-success', 'form-error');
+        try {
+            var response = await fetch('{{ url_for("auth.register_send_code") }}', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: new URLSearchParams({ email: emailInput.value })
+            });
+            var data = await response.json();
+            hint.textContent = data.message;
+            hint.classList.add(data.ok ? 'form-success' : 'form-error');
+            if (data.ok) {
+                // 只刷新验证码按钮状态，不刷新页面，其他输入内容会完整保留。
+                localStorage.setItem(key, String(Date.now() + 60000));
+                startCooldown();
+            } else {
+                button.disabled = false;
+                button.textContent = '发送验证码';
+            }
+        } catch (error) {
+            hint.textContent = '请求失败，请检查网络后重试';
+            hint.classList.add('form-error');
+            button.disabled = false;
+            button.textContent = '发送验证码';
+        }
     });
 }());
 </script>{% endblock %}

@@ -25,4 +25,5 @@
 @media(max-width:767px){.managed-form{padding:22px 16px 18px}.form-actions{position:static;background:none}}
 .account-fields{align-items:start}
 .account-fields .password-help{grid-column:2;margin-top:-1px}
+.form-success{color:var(--success)}.form-error{color:var(--danger)}
 @media(max-width:767px){.account-fields .password-help{grid-column:1;margin-top:-8px}}
