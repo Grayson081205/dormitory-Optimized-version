@@ -39,7 +39,6 @@
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
         <a href="{{ url_for('users.user_list') }}"><span class="brand-mark">✦</span><span>查寝管理</span></a>
-        <span class="brand-version">LOCAL</span>
     </div>
     <nav class="sidebar-nav" aria-label="主导航">
         <a href="{{ url_for('users.user_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('users.') else '' }}">
