@@ -69,7 +69,8 @@ def _managed_user_count():
 
 
 def _user_limit_reached():
-    return _managed_user_count() >= MAX_MANAGED_USERS_PER_ACCOUNT
+    # 管理员用于集中管理多个查寝账号，不受单账号数量限制。
+    return not current_user.is_admin and _managed_user_count() >= MAX_MANAGED_USERS_PER_ACCOUNT
 
 
 @users_bp.route('/')
@@ -108,8 +109,7 @@ def send_notification_code():
 @users_bp.route('/users/new', methods=['GET', 'POST'])
 @login_required
 def user_new():
-    # 每个网站登录账号最多绑定一个查寝账号。管理员也遵循同样规则，
-    # 这样可避免通过直接访问 /users/new 绕过页面限制。
+    # 普通登录账号最多绑定一个查寝账号；管理员可集中添加多个账号。
     if _user_limit_reached():
         flash('每个登录账号只能添加一个查寝账号', 'danger')
         return redirect(url_for('users.user_list'))
