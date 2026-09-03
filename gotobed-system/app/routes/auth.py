@@ -67,6 +67,7 @@ def _verify_code(email, purpose, code):
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('users.user_list'))
+    email = _normal_email(request.args.get('email'))
     if request.method == 'POST':
         email = _normal_email(request.form.get('email'))
         account = Account.query.filter_by(email=email).first()
@@ -76,7 +77,8 @@ def login():
             login_user(account)
             return redirect(request.args.get('next') or url_for('users.user_list'))
         flash('邮箱或密码错误，或邮箱尚未验证', 'danger')
-    return render_template('login.html')
+    # 登录失败时回显邮箱，方便用户只重新输入密码；密码字段保持为空。
+    return render_template('login.html', email=email)
 
 
 @auth_bp.route('/register', methods=['GET', 'POST'])

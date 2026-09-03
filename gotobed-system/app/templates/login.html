@@ -11,7 +11,7 @@
         <div class="auth-form-wrap">
             <div class="auth-heading"><p class="eyebrow">欢迎回来</p><h2>登录账号</h2><p>使用注册邮箱继续管理你的查寝任务。</p></div>
             <form method="POST" class="stack-form">
-                <div class="field"><label for="email">邮箱地址</label><input type="email" class="form-control" id="email" name="email" autocomplete="email" required autofocus placeholder="name@example.com"></div>
+                <div class="field"><label for="email">邮箱地址</label><input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" autocomplete="email" required autofocus placeholder="name@example.com"></div>
                 <div class="field"><label for="password">登录密码</label><input type="password" class="form-control" id="password" name="password" autocomplete="current-password" required placeholder="输入密码"></div>
                 <button type="submit" class="btn btn-accent btn-full">登录</button>
             </form>

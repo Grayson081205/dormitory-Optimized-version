@@ -39,7 +39,15 @@ def send_email(subject: str, content: str, to_address: str):
     msg['Subject'] = subject
 
     try:
-        smtp = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
+        if int(smtp_port) == 465:
+            # 465 端口使用连接即加密的 SSL；部分网络会拦截该端口。
+            smtp = smtplib.SMTP_SSL(smtp_host, 465, timeout=15)
+        else:
+            # QQ 邮箱推荐使用 587 端口，通过 STARTTLS 升级为加密连接。
+            smtp = smtplib.SMTP(smtp_host, int(smtp_port), timeout=15)
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
         smtp.login(smtp_user, smtp_pass)
         smtp.sendmail(smtp_user, to_address, msg.as_string())
         smtp.quit()
