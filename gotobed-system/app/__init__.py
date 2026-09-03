@@ -62,13 +62,27 @@ def create_app():
 
 
 def _upgrade_legacy_schema():
-    """为已有 SQLite 数据库补充 owner_id，避免升级后旧数据无法启动。"""
+    """为已有 SQLite 数据库补充新字段，避免升级后旧数据无法启动。"""
     inspector = inspect(db.engine)
     if 'users' not in inspector.get_table_names():
         return
     columns = {column['name'] for column in inspector.get_columns('users')}
     if 'owner_id' not in columns:
         db.session.execute(text('ALTER TABLE users ADD COLUMN owner_id INTEGER'))
+        db.session.commit()
+    if 'campus' not in columns:
+        # 旧版本没有校区字段，这里按旧版账号规则迁移一次，之后由用户手动维护。
+        db.session.execute(text("ALTER TABLE users ADD COLUMN campus VARCHAR(20) NOT NULL DEFAULT 'baiyun'"))
+        current_year = datetime.now(BJT).year
+        legacy_users = db.session.execute(text('SELECT id, username FROM users')).fetchall()
+        for user_id, username in legacy_users:
+            campus = 'baiyun'
+            try:
+                campus = 'huizhou' if int(str(username)[:4]) >= current_year else 'baiyun'
+            except (TypeError, ValueError):
+                pass
+            db.session.execute(text('UPDATE users SET campus = :campus WHERE id = :user_id'),
+                                {'campus': campus, 'user_id': user_id})
         db.session.commit()
 
 

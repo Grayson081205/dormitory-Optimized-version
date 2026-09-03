@@ -16,6 +16,7 @@ CRON_PRESETS = {
     '10 22 * * *': '每天 22:10（北京时间）',
     '30 22 * * *': '每天 22:30（北京时间）',
 }
+CAMPUSES = {'baiyun': '白云校区', 'huizhou': '惠州校区'}
 
 
 def _form_email(form):
@@ -100,15 +101,20 @@ def user_new():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
         email = _form_email(request.form)
+        campus = request.form.get('campus', '').strip()
         if not username or not password:
             flash('账号和密码为必填项', 'danger')
-            return render_template('users/form.html', presets=CRON_PRESETS, user=None, form_email=email)
+            return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=None, form_email=email)
+
+        if campus not in CAMPUSES:
+            flash('请选择查寝校区', 'danger')
+            return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=None, form_email=email)
 
         if email:
             ok, error = _verify_code(email, 'notify_email', request.form.get('notification_code'))
             if not ok:
                 flash(f'通知邮箱验证失败：{error}', 'danger')
-                return render_template('users/form.html', presets=CRON_PRESETS, user=None, form_email=email)
+                return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=None, form_email=email)
 
         user = User(
             owner_id=current_user.id if not current_user.is_admin else current_user.id,
@@ -117,12 +123,13 @@ def user_new():
             principal=request.form.get('principal', '').strip() or None,
             credential=request.form.get('credential', '').strip() or None,
             email=email or None,
+            campus=campus,
             enabled='enabled' in request.form,
         )
         cron_times = _parse_cron_times(request.form)
         if not cron_times:
             flash('请至少选择一个打卡时间', 'danger')
-            return render_template('users/form.html', presets=CRON_PRESETS, user=None, form_email=email)
+            return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=None, form_email=email)
         user.set_cron_times(cron_times)
         db.session.add(user)
         db.session.commit()
@@ -133,7 +140,7 @@ def user_new():
         flash(f'用户 {username} 添加成功', 'success')
         return redirect(url_for('users.user_list'))
 
-    return render_template('users/form.html', presets=CRON_PRESETS, user=None)
+    return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=None)
 
 
 @users_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -148,9 +155,14 @@ def user_edit(user_id):
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
         email = _form_email(request.form)
+        campus = request.form.get('campus', '').strip()
         if not username:
             flash('账号为必填项', 'danger')
-            return render_template('users/form.html', presets=CRON_PRESETS, user=user, form_email=email)
+            return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=user, form_email=email)
+
+        if campus not in CAMPUSES:
+            flash('请选择查寝校区', 'danger')
+            return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=user, form_email=email)
 
         user.username = username
         if password:
@@ -162,12 +174,13 @@ def user_edit(user_id):
             ok, error = _verify_code(email, 'notify_email', request.form.get('notification_code'))
             if not ok:
                 flash(f'通知邮箱验证失败：{error}', 'danger')
-                return render_template('users/form.html', presets=CRON_PRESETS, user=user, form_email=email)
+                return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=user, form_email=email)
         user.email = email or None
+        user.campus = campus
         cron_times = _parse_cron_times(request.form)
         if not cron_times:
             flash('请至少选择一个打卡时间', 'danger')
-            return render_template('users/form.html', presets=CRON_PRESETS, user=user, form_email=email)
+            return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=user, form_email=email)
         user.set_cron_times(cron_times)
         user.enabled = 'enabled' in request.form
         db.session.commit()
@@ -177,7 +190,7 @@ def user_edit(user_id):
         flash(f'用户 {username} 更新成功', 'success')
         return redirect(url_for('users.user_list'))
 
-    return render_template('users/form.html', presets=CRON_PRESETS, user=user)
+    return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=user)
 
 
 @users_bp.route('/users/<int:user_id>/delete', methods=['POST'])
@@ -231,6 +244,7 @@ def user_test(user_id):
         principal=user.principal,
         credential=user.credential,
         email=user.email,
+        campus=user.campus,
     )
 
     # 记录日志

@@ -57,6 +57,8 @@ class User(db.Model):
     principal = db.Column(db.Text, nullable=True)
     credential = db.Column(db.Text, nullable=True)
     email = db.Column(db.Text, nullable=True)
+    # 查寝校区：baiyun（白云）或 huizhou（惠州）。
+    campus = db.Column(db.String(20), nullable=False, default='baiyun')
     cron_times = db.Column(db.Text, nullable=False, default='["10 21 * * *"]')
     enabled = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(BJT))

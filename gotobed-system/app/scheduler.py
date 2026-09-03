@@ -37,6 +37,7 @@ def _execute_gotobed(user_id: int):
             principal=user.principal,
             credential=user.credential,
             email=user.email,
+            campus=user.campus,
         )
 
         log = Log(
