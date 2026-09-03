@@ -11,13 +11,16 @@ logs_bp = Blueprint('logs', __name__)
 def log_list():
     page = request.args.get('page', 1, type=int)
     user_id = request.args.get('user_id', type=int)
+    status = request.args.get('status', '').strip()
     per_page = 20
 
     query = Log.query.join(User).order_by(Log.executed_at.desc())
     if not current_user.is_admin:
         query = query.filter(User.owner_id == current_user.id)
     if user_id:
-        query = query.filter_by(user_id=user_id)
+        query = query.filter(Log.user_id == user_id)
+    if status in {'success', 'failure'}:
+        query = query.filter(Log.status == status)
 
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     users_query = User.query if current_user.is_admin else User.query.filter_by(owner_id=current_user.id)
@@ -27,4 +30,5 @@ def log_list():
                            logs=pagination.items,
                            pagination=pagination,
                            users=users,
-                           selected_user_id=user_id)
+                           selected_user_id=user_id,
+                           selected_status=status)

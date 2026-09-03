@@ -1,72 +1,9 @@
 {% extends "base.html" %}
 {% block title %}执行日志 - 查寝管理系统{% endblock %}
-
+{% block page_title %}执行日志{% endblock %}
 {% block content %}
-<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
-    <div>
-        <h2>执行日志</h2>
-        <p>查看每次查寝的执行状态和结果</p>
-    </div>
-    <div>
-        <form method="GET">
-            <select class="form-select" name="user_id" onchange="this.form.submit()">
-                <option value="">全部用户</option>
-                {% for u in users %}
-                <option value="{{ u.id }}" {% if selected_user_id == u.id %}selected{% endif %}>
-                    {{ u.username }}
-                </option>
-                {% endfor %}
-            </select>
-        </form>
-    </div>
-</div>
-
-{% if logs %}
-<div class="log-list">
-    {% for log in logs %}
-    <div class="log-item {% if log.status == 'success' %}log-success{% else %}log-failure{% endif %}">
-        <div class="log-indicator"></div>
-        <div class="log-body">
-            <div class="log-top">
-                <span class="log-user">{{ log.user.username }}</span>
-                <span class="log-time">{{ log.executed_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
-            </div>
-            <div class="log-message">{{ log.message }}</div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-
-{% if pagination.pages > 1 %}
-<nav style="margin-top:24px;">
-    <ul class="pagination">
-        {% if pagination.has_prev %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ pagination.prev_num }}{% if selected_user_id %}&user_id={{ selected_user_id }}{% endif %}">上一页</a>
-        </li>
-        {% endif %}
-        {% for p in pagination.iter_pages() %}
-        {% if p %}
-        <li class="page-item {{ 'active' if p == pagination.page else '' }}">
-            <a class="page-link" href="?page={{ p }}{% if selected_user_id %}&user_id={{ selected_user_id }}{% endif %}">{{ p }}</a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">…</span></li>
-        {% endif %}
-        {% endfor %}
-        {% if pagination.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ pagination.next_num }}{% if selected_user_id %}&user_id={{ selected_user_id }}{% endif %}">下一页</a>
-        </li>
-        {% endif %}
-    </ul>
-</nav>
-{% endif %}
-
-{% else %}
-<div class="empty-state">
-    <div class="empty-icon">📋</div>
-    <p>暂无执行日志</p>
-</div>
-{% endif %}
+<div class="page-intro logs-toolbar"><p>查看每次查寝的执行状态和结果。</p><form method="GET" class="filter-form"><label class="sr-only" for="user_id">筛选用户</label><select class="form-select" id="user_id" name="user_id" onchange="this.form.submit()"><option value="">全部用户</option>{% for u in users %}<option value="{{ u.id }}" {% if selected_user_id == u.id %}selected{% endif %}>{{ u.username }}</option>{% endfor %}</select><label class="sr-only" for="status">筛选状态</label><select class="form-select" id="status" name="status" onchange="this.form.submit()"><option value="">全部状态</option><option value="success" {% if selected_status == 'success' %}selected{% endif %}>成功</option><option value="failure" {% if selected_status == 'failure' %}selected{% endif %}>失败</option></select></form></div>
+{% if logs %}<section class="log-panel"><div class="log-header"><span>状态</span><span>账号</span><span>执行时间</span><span>执行消息</span></div>{% for log in logs %}<article class="log-row"><div><span class="status-dot {{ 'log-dot-success' if log.status == 'success' else 'log-dot-failure' }}"></span><span class="result-text {{ 'result-success' if log.status == 'success' else 'result-failure' }}">{{ '成功' if log.status == 'success' else '失败' }}</span></div><strong>{{ log.user.username }}</strong><time datetime="{{ log.executed_at.isoformat() }}">{{ log.executed_at.strftime('%Y-%m-%d %H:%M:%S') }}</time><p>{{ log.message }}</p></article>{% endfor %}</section>
+{% if pagination.pages > 1 %}<nav class="pagination" aria-label="日志分页">{% if pagination.has_prev %}<a class="page-link" href="?page={{ pagination.prev_num }}{% if selected_user_id %}&user_id={{ selected_user_id }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">上一页</a>{% endif %}{% for p in pagination.iter_pages() %}{% if p %}<a class="page-link {{ 'active' if p == pagination.page else '' }}" href="?page={{ p }}{% if selected_user_id %}&user_id={{ selected_user_id }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">{{ p }}</a>{% else %}<span class="page-link disabled">…</span>{% endif %}{% endfor %}{% if pagination.has_next %}<a class="page-link" href="?page={{ pagination.next_num }}{% if selected_user_id %}&user_id={{ selected_user_id }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">下一页</a>{% endif %}</nav>{% endif %}
+{% else %}<div class="empty-state"><div class="empty-icon">≡</div><h3>暂无执行日志</h3><p>查寝任务运行后，执行结果会显示在这里。</p></div>{% endif %}
 {% endblock %}

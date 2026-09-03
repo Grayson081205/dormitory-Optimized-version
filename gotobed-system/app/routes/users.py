@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 import re
 
-from ..models import db, User
+from ..models import db, User, Log
 from ..crypto import encrypt_password
 from ..scheduler import add_user_job, remove_user_job, update_user_job
 
@@ -52,7 +52,20 @@ def _parse_cron_times(form) -> list:
 def user_list():
     query = User.query if current_user.is_admin else User.query.filter_by(owner_id=current_user.id)
     users = query.order_by(User.created_at.desc()).all()
-    return render_template('users/list.html', users=users)
+    enabled_count = sum(1 for user in users if user.enabled)
+    log_query = Log.query.join(User)
+    if not current_user.is_admin:
+        log_query = log_query.filter(User.owner_id == current_user.id)
+    # 概览只统计最近 20 次执行，避免很早的历史结果影响当前状态判断。
+    recent_logs = log_query.order_by(Log.executed_at.desc()).limit(20).all()
+    success_logs = sum(1 for log in recent_logs if log.status == 'success')
+    stats = {
+        'total_users': len(users),
+        'enabled_users': enabled_count,
+        'disabled_users': len(users) - enabled_count,
+        'success_rate': round(success_logs / len(recent_logs) * 100) if recent_logs else 0,
+    }
+    return render_template('users/list.html', users=users, stats=stats)
 
 
 @users_bp.route('/users/new', methods=['GET', 'POST'])
