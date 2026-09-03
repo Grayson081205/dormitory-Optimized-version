@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify
 from flask_login import login_required, current_user
 import re
 
 from ..models import db, User, Log
+from .auth import EMAIL_RE, _issue_code, _verify_code
 from ..crypto import encrypt_password
 from ..scheduler import add_user_job, remove_user_job, update_user_job
 
@@ -15,6 +16,19 @@ CRON_PRESETS = {
     '10 22 * * *': '每天 22:10（北京时间）',
     '30 22 * * *': '每天 22:30（北京时间）',
 }
+
+
+def _form_email(form):
+    """规范化通知邮箱，便于比较新旧地址。"""
+    return (form.get('email') or '').strip().lower()
+
+
+def _ajax_response(message, ok):
+    """验证码接口统一返回 JSON，避免表单页面刷新。"""
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
+        return jsonify({'ok': ok, 'message': message})
+    flash(message, 'success' if ok else 'danger')
+    return redirect(url_for('users.user_new'))
 
 
 def _validate_cron_time(expr: str) -> bool:
@@ -68,15 +82,33 @@ def user_list():
     return render_template('users/list.html', users=users, stats=stats)
 
 
+@users_bp.route('/users/send-notification-code', methods=['POST'])
+@login_required
+def send_notification_code():
+    """向通知邮箱发送验证码；只有验证通过后才会保存该邮箱。"""
+    email = _form_email(request.form)
+    if not EMAIL_RE.match(email):
+        return _ajax_response('请输入有效的通知邮箱', False)
+    error = _issue_code(email, 'notify_email')
+    return _ajax_response(error or '验证码已发送，请查收邮件', not error)
+
+
 @users_bp.route('/users/new', methods=['GET', 'POST'])
 @login_required
 def user_new():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
+        email = _form_email(request.form)
         if not username or not password:
             flash('账号和密码为必填项', 'danger')
-            return render_template('users/form.html', presets=CRON_PRESETS, user=None)
+            return render_template('users/form.html', presets=CRON_PRESETS, user=None, form_email=email)
+
+        if email:
+            ok, error = _verify_code(email, 'notify_email', request.form.get('notification_code'))
+            if not ok:
+                flash(f'通知邮箱验证失败：{error}', 'danger')
+                return render_template('users/form.html', presets=CRON_PRESETS, user=None, form_email=email)
 
         user = User(
             owner_id=current_user.id if not current_user.is_admin else current_user.id,
@@ -84,13 +116,13 @@ def user_new():
             password_encrypted=encrypt_password(password),
             principal=request.form.get('principal', '').strip() or None,
             credential=request.form.get('credential', '').strip() or None,
-            email=request.form.get('email', '').strip() or None,
+            email=email or None,
             enabled='enabled' in request.form,
         )
         cron_times = _parse_cron_times(request.form)
         if not cron_times:
             flash('请至少选择一个打卡时间', 'danger')
-            return render_template('users/form.html', presets=CRON_PRESETS, user=None)
+            return render_template('users/form.html', presets=CRON_PRESETS, user=None, form_email=email)
         user.set_cron_times(cron_times)
         db.session.add(user)
         db.session.commit()
@@ -115,20 +147,27 @@ def user_edit(user_id):
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
+        email = _form_email(request.form)
         if not username:
             flash('账号为必填项', 'danger')
-            return render_template('users/form.html', presets=CRON_PRESETS, user=user)
+            return render_template('users/form.html', presets=CRON_PRESETS, user=user, form_email=email)
 
         user.username = username
         if password:
             user.password_encrypted = encrypt_password(password)
         user.principal = request.form.get('principal', '').strip() or None
         user.credential = request.form.get('credential', '').strip() or None
-        user.email = request.form.get('email', '').strip() or None
+        old_email = (user.email or '').strip().lower()
+        if email and email != old_email:
+            ok, error = _verify_code(email, 'notify_email', request.form.get('notification_code'))
+            if not ok:
+                flash(f'通知邮箱验证失败：{error}', 'danger')
+                return render_template('users/form.html', presets=CRON_PRESETS, user=user, form_email=email)
+        user.email = email or None
         cron_times = _parse_cron_times(request.form)
         if not cron_times:
             flash('请至少选择一个打卡时间', 'danger')
-            return render_template('users/form.html', presets=CRON_PRESETS, user=user)
+            return render_template('users/form.html', presets=CRON_PRESETS, user=user, form_email=email)
         user.set_cron_times(cron_times)
         user.enabled = 'enabled' in request.form
         db.session.commit()

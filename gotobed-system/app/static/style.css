@@ -26,4 +26,5 @@
 .account-fields{align-items:start}
 .account-fields .password-help{grid-column:2;margin-top:-1px}
 .form-success{color:var(--success)}.form-error{color:var(--danger)}
+.notification-email-action .form-control{min-width:0}.notification-email-action .btn{flex:0 0 auto}
 @media(max-width:767px){.account-fields .password-help{grid-column:1;margin-top:-8px}}
