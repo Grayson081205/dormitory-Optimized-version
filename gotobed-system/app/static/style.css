@@ -28,3 +28,5 @@
 .form-success{color:var(--success)}.form-error{color:var(--danger)}
 .notification-email-action .form-control{min-width:0}.notification-email-action .btn{flex:0 0 auto}
 @media(max-width:767px){.account-fields .password-help{grid-column:1;margin-top:-8px}}
+
+.auth-intro-copy .auth-description{color:var(--text-secondary);font-size:16px;max-width:430px;margin:0}.auth-intro-copy .auth-support{color:var(--text-muted);font-size:13px;margin:10px 0 0}@media(max-width:767px){.auth-intro-copy .auth-description{font-size:13px}.auth-intro-copy .auth-support{font-size:12px;margin-top:8px}}
