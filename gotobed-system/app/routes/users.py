@@ -17,6 +17,7 @@ CRON_PRESETS = {
     '30 22 * * *': '每天 22:30（北京时间）',
 }
 CAMPUSES = {'baiyun': '白云校区', 'huizhou': '惠州校区'}
+MAX_MANAGED_USERS_PER_ACCOUNT = 1
 
 
 def _form_email(form):
@@ -62,11 +63,21 @@ def _parse_cron_times(form) -> list:
     return valid
 
 
+def _managed_user_count():
+    """返回当前登录账号已创建的查寝账号数量。"""
+    return User.query.filter_by(owner_id=current_user.id).count()
+
+
+def _user_limit_reached():
+    return _managed_user_count() >= MAX_MANAGED_USERS_PER_ACCOUNT
+
+
 @users_bp.route('/')
 @login_required
 def user_list():
     query = User.query if current_user.is_admin else User.query.filter_by(owner_id=current_user.id)
     users = query.order_by(User.created_at.desc()).all()
+    can_add_user = not _user_limit_reached()
     enabled_count = sum(1 for user in users if user.enabled)
     log_query = Log.query.join(User)
     if not current_user.is_admin:
@@ -80,7 +91,7 @@ def user_list():
         'disabled_users': len(users) - enabled_count,
         'success_rate': round(success_logs / len(recent_logs) * 100) if recent_logs else 0,
     }
-    return render_template('users/list.html', users=users, stats=stats)
+    return render_template('users/list.html', users=users, stats=stats, can_add_user=can_add_user)
 
 
 @users_bp.route('/users/send-notification-code', methods=['POST'])
@@ -97,6 +108,12 @@ def send_notification_code():
 @users_bp.route('/users/new', methods=['GET', 'POST'])
 @login_required
 def user_new():
+    # 每个网站登录账号最多绑定一个查寝账号。管理员也遵循同样规则，
+    # 这样可避免通过直接访问 /users/new 绕过页面限制。
+    if _user_limit_reached():
+        flash('每个登录账号只能添加一个查寝账号', 'danger')
+        return redirect(url_for('users.user_list'))
+
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
@@ -130,6 +147,12 @@ def user_new():
         if not cron_times:
             flash('请至少选择一个打卡时间', 'danger')
             return render_template('users/form.html', presets=CRON_PRESETS, campuses=CAMPUSES, user=None, form_email=email)
+
+        # 再次检查，覆盖用户打开表单后其他请求先完成创建的情况。
+        if _user_limit_reached():
+            flash('每个登录账号只能添加一个查寝账号', 'danger')
+            return redirect(url_for('users.user_list'))
+
         user.set_cron_times(cron_times)
         db.session.add(user)
         db.session.commit()
