@@ -1,5 +1,6 @@
 import re
 import secrets
+import logging
 from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, jsonify, get_flashed_messages
@@ -11,6 +12,7 @@ from ..email_sender import send_verification_code
 from ..models import db, Account, EmailVerificationCode, BJT
 
 auth_bp = Blueprint('auth', __name__)
+logger = logging.getLogger(__name__)
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 CODE_TTL_MINUTES = 10
 CODE_RESEND_SECONDS = 60
@@ -32,6 +34,9 @@ def _issue_code(email, purpose):
     recent = EmailVerificationCode.query.filter_by(email=email, purpose=purpose).order_by(
         EmailVerificationCode.created_at.desc()).first()
     if recent and (now - recent.created_at).total_seconds() < CODE_RESEND_SECONDS:
+        remaining = CODE_RESEND_SECONDS - (now - recent.created_at).total_seconds()
+        logger.info('验证码发送被限流: email=%s, purpose=%s, retry_after=%.0fs',
+                    email, purpose, max(0, remaining))
         return '验证码发送过于频繁，请稍后再试'
     code = f'{secrets.randbelow(1000000):06d}'
     record = EmailVerificationCode(email=email, purpose=purpose,
@@ -39,9 +44,11 @@ def _issue_code(email, purpose):
     db.session.add(record)
     db.session.commit()
     if not send_verification_code(email, code, purpose):
+        logger.error('验证码发送失败: email=%s, purpose=%s', email, purpose)
         db.session.delete(record)
         db.session.commit()
         return '验证码邮件发送失败，请检查 SMTP 配置'
+    logger.info('验证码发送完成: email=%s, purpose=%s', email, purpose)
     return None
 
 

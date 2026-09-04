@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import datetime
 from flask import Flask
 from flask_login import LoginManager
@@ -14,6 +15,7 @@ except ImportError:  # 未安装可选依赖时仍允许通过系统环境变量
 from .models import db, Account, User, BJT
 
 login_manager = LoginManager()
+logger = logging.getLogger(__name__)
 
 
 def create_app():
@@ -38,6 +40,12 @@ def create_app():
     app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '465'))
     app.config['SMTP_USER'] = os.environ.get('SMTP_USER', '')
     app.config['SMTP_PASS'] = os.environ.get('SMTP_PASS', '')
+    logger.info(
+        'SMTP 配置已加载: host=%s, port=%s, user=%s, pass=%s',
+        app.config['SMTP_HOST'], app.config['SMTP_PORT'],
+        app.config['SMTP_USER'] or '<empty>',
+        'SET' if app.config['SMTP_PASS'] else 'EMPTY',
+    )
 
     # 初始化扩展
     db.init_app(app)
