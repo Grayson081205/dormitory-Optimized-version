@@ -22,6 +22,48 @@ def get_beijing_time():
     return now.strftime(f'%Y-%m-%d {weekday} %H:%M')
 
 
+def _close_smtp(smtp):
+    if smtp is None:
+        return
+    try:
+        smtp.quit()
+    except Exception:
+        try:
+            smtp.close()
+        except Exception:
+            pass
+
+
+def _send_via_port(smtp_host, smtp_port, smtp_user, smtp_pass, msg, to_address):
+    smtp = None
+    stage = 'prepare'
+    try:
+        if int(smtp_port) == 465:
+            stage = 'connect_ssl'
+            logger.info('SMTP 阶段=%s, port=%s', stage, smtp_port)
+            smtp = smtplib.SMTP_SSL(smtp_host, 465, timeout=15)
+        else:
+            stage = 'connect_plain'
+            logger.info('SMTP 阶段=%s, port=%s', stage, smtp_port)
+            smtp = smtplib.SMTP(smtp_host, int(smtp_port), timeout=15)
+            stage = 'starttls'
+            logger.info('SMTP 阶段=%s, port=%s', stage, smtp_port)
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+        stage = 'login'
+        logger.info('SMTP 阶段=%s, port=%s', stage, smtp_port)
+        smtp.login(smtp_user, smtp_pass)
+        stage = 'sendmail'
+        logger.info('SMTP 阶段=%s, port=%s', stage, smtp_port)
+        smtp.sendmail(smtp_user, to_address, msg.as_string())
+        return True, stage, None
+    except Exception as e:
+        return False, stage, e
+    finally:
+        _close_smtp(smtp)
+
+
 def send_email(subject: str, content: str, to_address: str):
     """发送邮件，返回是否发送成功。"""
     if not to_address:
@@ -46,66 +88,30 @@ def send_email(subject: str, content: str, to_address: str):
     msg['To'] = to_address
     msg['Subject'] = subject
 
-    smtp = None
     started = time.monotonic()
-    stage = 'prepare'
+    primary_port = int(smtp_port)
+    fallback_port = 465 if primary_port != 465 else 587
+    ports = [primary_port, fallback_port]
     logger.info(
-        '邮件发送开始: host=%s, port=%s, user=%s, to=%s, subject=%s',
-        smtp_host, smtp_port, smtp_user, to_address, subject,
+        '邮件发送开始: host=%s, ports=%s, user=%s, to=%s, subject=%s',
+        smtp_host, ports, smtp_user, to_address, subject,
     )
-    try:
-        if int(smtp_port) == 465:
-            # 465 端口使用连接即加密的 SSL；部分网络会拦截该端口。
-            stage = 'connect_ssl'
-            logger.info('SMTP 阶段=%s', stage)
-            smtp = smtplib.SMTP_SSL(smtp_host, 465, timeout=15)
+
+    last_error = None
+    for index, port in enumerate(ports):
+        ok, stage, error = _send_via_port(smtp_host, port, smtp_user, smtp_pass, msg, to_address)
+        if ok:
+            logger.info('邮件发送成功: to=%s, port=%s, elapsed=%.2fs',
+                        to_address, port, time.monotonic() - started)
+            return True
+        last_error = error
+        if index == 0:
+            logger.warning('邮件发送失败，尝试备用端口: port=%s, stage=%s, error=%s',
+                           port, stage, error)
         else:
-            # QQ 邮箱推荐使用 587 端口，通过 STARTTLS 升级为加密连接。
-            stage = 'connect_plain'
-            logger.info('SMTP 阶段=%s', stage)
-            smtp = smtplib.SMTP(smtp_host, int(smtp_port), timeout=15)
-            stage = 'starttls'
-            logger.info('SMTP 阶段=%s', stage)
-            smtp.ehlo()
-            smtp.starttls()
-            smtp.ehlo()
-        stage = 'login'
-        logger.info('SMTP 阶段=%s', stage)
-        smtp.login(smtp_user, smtp_pass)
-        stage = 'sendmail'
-        logger.info('SMTP 阶段=%s', stage)
-        smtp.sendmail(smtp_user, to_address, msg.as_string())
-        logger.info('邮件发送成功: to=%s, elapsed=%.2fs', to_address, time.monotonic() - started)
-        return True
-    except smtplib.SMTPResponseException as e:
-        logger.error(
-            '邮件发送失败: stage=%s, exception=%s, smtp_code=%s, smtp_error=%s, elapsed=%.2fs',
-            stage, type(e).__name__, getattr(e, 'smtp_code', None),
-            getattr(e, 'smtp_error', b''), time.monotonic() - started,
-            exc_info=True,
-        )
-        return False
-    except (TimeoutError, OSError) as e:
-        logger.error(
-            '邮件发送失败: stage=%s, 网络或超时异常, exception=%s, detail=%s, elapsed=%.2fs',
-            stage, type(e).__name__, str(e), time.monotonic() - started, exc_info=True,
-        )
-        return False
-    except Exception as e:
-        logger.error(
-            '邮件发送失败: stage=%s, exception=%s, detail=%s, elapsed=%.2fs',
-            stage, type(e).__name__, str(e), time.monotonic() - started, exc_info=True,
-        )
-        return False
-    finally:
-        if smtp is not None:
-            try:
-                smtp.quit()
-            except Exception:
-                try:
-                    smtp.close()
-                except Exception:
-                    pass
+            logger.error('邮件发送失败: port=%s, stage=%s, error=%s, elapsed=%.2fs',
+                         port, stage, error, time.monotonic() - started, exc_info=True)
+    return False
 
 
 def send_verification_code(to_address: str, code: str, purpose: str):
