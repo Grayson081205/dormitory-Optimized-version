@@ -1,0 +1,8 @@
+# Secrets and runtime state are injected or mounted at runtime.
+gotobed-system/.env
+gotobed-system/.venv/
+gotobed-system/data/
+**/__pycache__/
+**/*.pyc
+.git/
+.DS_Store
