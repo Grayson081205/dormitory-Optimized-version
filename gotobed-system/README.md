@@ -133,6 +133,23 @@ docker-compose restart
 docker-compose up -d --build
 ```
 
+### 使用已导出的镜像包部署
+
+如果服务器没有项目源码，可以将对应架构的镜像包和 `docker-compose.yml`、`.env` 放在同一目录。服务器为 `x86_64` 时使用 `gotobed-system-amd64.tar`；服务器为 `aarch64` 时使用 `gotobed-system-arm64.tar`。默认 compose 镜像名为 `gotobed-system:amd64`；ARM 服务器可在 `.env` 增加 `GOTOBED_IMAGE=gotobed-system:arm64`。
+
+```bash
+# 进入包含 tar、docker-compose.yml 和 .env 的目录
+docker load -i gotobed-system-amd64.tar
+
+# 确认 .env 权限，避免授权码被其他用户读取
+chmod 600 .env
+
+# 使用已加载的镜像启动；不会重新构建，也不会覆盖 .env
+docker compose up -d --no-build
+```
+
+`docker-compose.yml` 通过 `env_file: .env` 在容器启动时注入配置，`.env` 不需要、也不应该打包进镜像。数据库通过 `GOTOBED_DATA_DIR` 指定的目录持久化；默认目录为 `./gotobed-data`，服务器已有数据时会直接使用该目录，也可以在 `.env` 中覆盖。更新镜像时只需重新执行 `docker load` 和 `docker compose up -d --no-build`。
+
 ---
 
 ### 本地开发运行
@@ -192,7 +209,7 @@ python run.py
 | `SECRET_KEY` | 是 | Flask session 密钥 | `dev-secret-key` |
 | `FERNET_KEY` | 是 | 密码加密密钥（Fernet） | 无 |
 | `SMTP_HOST` | 否 | SMTP 服务器地址 | `smtp.qq.com` |
-| `SMTP_PORT` | 否 | SMTP 端口 | `465` |
+| `SMTP_PORT` | 否 | SMTP 端口 | `587` |
 | `SMTP_USER` | 否 | 发件人邮箱 | 无 |
 | `SMTP_PASS` | 否 | 邮箱授权码 | 无 |
 | `SCHEDULER_MAX_WORKERS` | 否 | 定时查寝并发线程数；超出后排队等待 | `20` |
