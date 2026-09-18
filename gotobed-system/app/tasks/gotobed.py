@@ -202,6 +202,19 @@ def _do_gotobed(session, username):
     _WEU = response.cookies.get('_WEU')
     cookies = {'_WEU': _WEU}
 
+    # 为班干部设置学生角色（普通学生此步骤也兼容，不会报错）
+    role_data = {
+        'data': '{"APPID":"5405362541914944","APPNAME":"swmzncqapp","ROLEID":"3c787fd4aa2041809be43821422c7995"}'
+    }
+    try:
+        role_response = session.post(
+            'https://xsfw.gzist.edu.cn/xsfw/sys/swpubapp/MobileCommon/setAppRole.do',
+            cookies=cookies, data=role_data, timeout=REQUEST_TIMEOUT)
+        role_response.raise_for_status()
+        logger.info('已设置学生角色')
+    except Exception as e:
+        logger.warning(f'设置角色失败（如果是普通学生则忽略）: {e}')
+
     data_by = {
         'data': '{"SFFWN":"1","DDDM":"134D3343A40D51AFE0630717000A7549",'
                 '"DDMC":"广州理工学院白云区","QDJD":113.46617498988796,'
