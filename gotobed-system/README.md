@@ -1,6 +1,6 @@
 # 查寝管理系统 — 部署文档
 
-自托管的查寝管理 Web 系统，替代 GitHub Actions 方案，支持多用户管理和定时任务调度。
+自托管的查寝管理 Web 系统，替代 GitHub Actions 方案，支持邮箱注册、登录、密码找回、多用户管理和定时任务调度。
 
 ---
 
@@ -21,13 +21,15 @@
 
 ## 功能特性
 
-- **多用户管理**：Web 后台增删改查查寝用户
+- **账号隔离**：普通登录邮箱最多绑定一个查寝账号，管理员可集中管理多个账号
 - **多时间选择**：每个用户可选择多个打卡时间（9:10 / 9:30 / 10:10 / 10:30）
 - **二次验证支持**：密保问题/答案为选填，有需要时自动触发
 - **失败重试**：最多 5 次重试，指数退避
+- **批量排队**：同一时间触发的任务不会因线程池繁忙而丢弃，会排队等待执行
 - **邮件通知**：查寝结果自动发送到用户邮箱
 - **执行日志**：查看每次查寝的执行状态和结果
 - **密码加密**：用户密码使用 Fernet 对称加密存储
+- **邮箱账号体系**：邮箱验证码注册、邮箱登录、验证码找回密码
 - **Docker 部署**：单容器一键启动
 
 ---
@@ -86,6 +88,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 ```env
 # 管理员密码（登录 Web 后台用）
 ADMIN_PASSWORD=your-strong-password
+ADMIN_EMAIL=3570002759@qq.com
 
 # Flask session 密钥（随机字符串即可）
 SECRET_KEY=your-random-secret-key
@@ -130,6 +133,23 @@ docker-compose restart
 docker-compose up -d --build
 ```
 
+### 使用已导出的镜像包部署
+
+如果服务器没有项目源码，可以将对应架构的镜像包和 `docker-compose.yml`、`.env` 放在同一目录。服务器为 `x86_64` 时使用 `gotobed-system-amd64.tar`；服务器为 `aarch64` 时使用 `gotobed-system-arm64.tar`。默认 compose 镜像名为 `gotobed-system:amd64`；ARM 服务器可在 `.env` 增加 `GOTOBED_IMAGE=gotobed-system:arm64`。
+
+```bash
+# 进入包含 tar、docker-compose.yml 和 .env 的目录
+docker load -i gotobed-system-amd64.tar
+
+# 确认 .env 权限，避免授权码被其他用户读取
+chmod 600 .env
+
+# 使用已加载的镜像启动；不会重新构建，也不会覆盖 .env
+docker compose up -d --no-build
+```
+
+`docker-compose.yml` 通过 `env_file: .env` 在容器启动时注入配置，`.env` 不需要、也不应该打包进镜像。数据库通过 `GOTOBED_DATA_DIR` 指定的目录持久化；默认目录为 `./gotobed-data`，服务器已有数据时会直接使用该目录，也可以在 `.env` 中覆盖。更新镜像时只需重新执行 `docker load` 和 `docker compose up -d --no-build`。
+
 ---
 
 ### 本地开发运行
@@ -141,7 +161,17 @@ cd gotobed-system
 pip install -r requirements.txt
 ```
 
-**2. 设置环境变量**
+**2. 配置环境变量**
+
+项目会自动读取 `gotobed-system/.env`。可直接复制模板后填写管理员邮箱、管理员密码和 SMTP 配置：
+
+```bash
+cp .env.example .env
+```
+
+配置完成后无需再执行 `export`。
+
+如果不使用 `.env` 文件，也可以手动设置环境变量：
 
 Windows PowerShell：
 
@@ -179,9 +209,10 @@ python run.py
 | `SECRET_KEY` | 是 | Flask session 密钥 | `dev-secret-key` |
 | `FERNET_KEY` | 是 | 密码加密密钥（Fernet） | 无 |
 | `SMTP_HOST` | 否 | SMTP 服务器地址 | `smtp.qq.com` |
-| `SMTP_PORT` | 否 | SMTP 端口 | `465` |
+| `SMTP_PORT` | 否 | SMTP 端口 | `587` |
 | `SMTP_USER` | 否 | 发件人邮箱 | 无 |
 | `SMTP_PASS` | 否 | 邮箱授权码 | 无 |
+| `SCHEDULER_MAX_WORKERS` | 否 | 定时查寝并发线程数；超出后排队等待 | `20` |
 
 ### 预设打卡时间（北京时间）
 
@@ -200,9 +231,11 @@ python run.py
 
 打开系统地址，输入管理员密码登录。
 
-### 2. 添加用户
+### 2. 添加查寝账号
 
 点击「新增用户」，填写：
+
+普通登录邮箱只能添加一个查寝账号；管理员账号不受此限制。如需更换普通账号的查寝账号，请先删除原账号再新增。
 
 - **账号**（必填）：学工平台用户名
 - **密码**（必填）：学工平台密码

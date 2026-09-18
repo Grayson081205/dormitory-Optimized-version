@@ -1,6 +1,7 @@
 version: '3.8'
 services:
   gotobed:
+    image: ${GOTOBED_IMAGE:-gotobed-system:amd64}
     build:
       context: ..
       dockerfile: gotobed-system/Dockerfile
@@ -9,7 +10,8 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./data:/app/data
+      # Keep the existing host database by default; override with GOTOBED_DATA_DIR when needed.
+      - ${GOTOBED_DATA_DIR:-./gotobed-data}:/app/data
     env_file:
       - .env
     environment:

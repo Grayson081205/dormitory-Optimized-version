@@ -189,7 +189,7 @@ def _update_cookie(session, ticket):
     session.cookies = response.cookies
 
 
-def _do_gotobed(session, username):
+def _do_gotobed(session, username, campus='baiyun'):
     """执行查寝签到"""
     data = {
         'data': '{"APPID":"5405362541914944","APPNAME":"swmzncqapp"}'
@@ -216,12 +216,14 @@ def _do_gotobed(session, username):
     }
 
     url = 'https://xsfw.gzist.edu.cn/xsfw/sys/swmzncqapp/modules/studentCheckController/uniFormSignUp.do'
-    if int(username[:4]) >= datetime.now(BJT).year:
+    if campus == 'huizhou':
         logger.info('定位: 惠州校区')
         response = session.post(url, cookies=cookies, data=data_hz, timeout=REQUEST_TIMEOUT)
-    else:
+    elif campus == 'baiyun':
         logger.info('定位: 白云校区')
         response = session.post(url, cookies=cookies, data=data_by, timeout=REQUEST_TIMEOUT)
+    else:
+        raise ValueError(f'不支持的校区配置: {campus}')
     response.raise_for_status()
 
     try:
@@ -238,7 +240,7 @@ def _do_gotobed(session, username):
 
 def run_gotobed(username: str, password: str,
                 principal: str = None, credential: str = None,
-                email: str = None) -> dict:
+                email: str = None, campus: str = 'baiyun') -> dict:
     """
     执行查寝任务，带重试。
 
@@ -254,7 +256,7 @@ def run_gotobed(username: str, password: str,
             session = _init_session()
             ticket = _login(session, username, password, principal, credential)
             _update_cookie(session, ticket)
-            result = _do_gotobed(session, username)
+            result = _do_gotobed(session, username, campus)
 
             if email:
                 send_gotobed_result(result, email)

@@ -23,3 +23,4 @@ class Config:
 
     # APScheduler
     SCHEDULER_API_ENABLED = False
+    SCHEDULER_MAX_WORKERS = int(os.environ.get('SCHEDULER_MAX_WORKERS', '20'))

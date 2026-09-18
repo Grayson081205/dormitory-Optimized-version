@@ -1,18 +1,21 @@
 {% extends "base.html" %}
 {% block title %}登录 - 查寝管理系统{% endblock %}
-
 {% block fullpage %}
-<div class="login-wrapper">
-    <div class="login-card">
-        <h2><span class="brand-dot" style="width:10px;height:10px;display:inline-block;background:var(--accent);border-radius:50%;margin-right:8px;box-shadow:0 0 10px var(--accent);vertical-align:middle;"></span>查寝管理系统</h2>
-        <p class="login-sub">请输入管理员密码</p>
-        <form method="POST">
-            <div style="margin-bottom:20px;">
-                <input type="password" class="form-control" id="password" name="password"
-                       placeholder="管理员密码" required autofocus>
-            </div>
-            <button type="submit" class="btn btn-accent btn-full">登录</button>
-        </form>
-    </div>
-</div>
+<main class="auth-layout">
+    <section class="auth-intro">
+        <a class="auth-brand" href="{{ url_for('auth.login') }}"><span class="brand-mark">✦</span>查寝管理系统</a>
+        <div class="auth-intro-copy"><p class="auth-kicker">AUTOMATED CHECK-IN</p><h1>让每一次查寝<br>都准时完成。</h1><p class="auth-description">管理学工平台账号、执行计划和查寝结果，保持流程清晰可追踪。</p><p class="auth-support">系统有疑惑请加微信，微信号：SW6115-7070-7151</p></div>
+    </section>
+    <section class="auth-panel">
+        <div class="auth-form-wrap">
+            <div class="auth-heading"><p class="eyebrow">欢迎回来</p><h2>登录账号</h2><p>使用注册邮箱继续管理你的查寝任务。</p></div>
+            <form method="POST" class="stack-form">
+                <div class="field"><label for="email">邮箱地址</label><input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" autocomplete="email" required autofocus placeholder="name@example.com"></div>
+                <div class="field"><label for="password">登录密码</label><input type="password" class="form-control" id="password" name="password" autocomplete="current-password" required placeholder="输入密码"></div>
+                <button type="submit" class="btn btn-accent btn-full">登录</button>
+            </form>
+            <div class="auth-links"><a href="{{ url_for('auth.register') }}">注册账号</a><a href="{{ url_for('auth.forgot_password') }}">忘记密码？</a></div>
+        </div>
+    </section>
+</main>
 {% endblock %}

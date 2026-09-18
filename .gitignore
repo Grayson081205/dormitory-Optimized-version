@@ -1,0 +1,6 @@
+# 本地环境变量和运行目录不得提交，里面可能包含 SMTP 授权码。
+gotobed-system/.env
+gotobed-system/.venv/
+gotobed-system/data/
+**/__pycache__/
+.DS_Store

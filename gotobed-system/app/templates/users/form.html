@@ -1,93 +1,30 @@
 {% extends "base.html" %}
 {% block title %}{{ '编辑' if user else '新增' }}用户 - 查寝管理系统{% endblock %}
-
+{% block page_title %}{{ '编辑' if user else '新增' }}用户{% endblock %}
+{% block page_actions %}<a href="{{ url_for('users.user_list') }}" class="btn btn-ghost">返回列表</a>{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h2>{{ '编辑' if user else '新增' }}用户</h2>
-    <p>{{ '修改用户信息和打卡时间' if user else '添加新的查寝账号' }}</p>
-</div>
-
-<div class="card" style="max-width:560px;">
-    <div class="card-body">
-        <form method="POST">
-            <div style="margin-bottom:16px;">
-                <label class="form-label">学工账号 <span style="color:var(--danger)">*</span></label>
-                <input type="text" class="form-control" name="username"
-                       value="{{ user.username if user else '' }}" required placeholder="学工平台用户名">
-            </div>
-
-            <div style="margin-bottom:16px;">
-                <label class="form-label">密码 {% if not user %}<span style="color:var(--danger)">*</span>{% endif %}</label>
-                <input type="password" class="form-control" name="password"
-                       {{ 'required' if not user else '' }} placeholder="{{ '留空表示不修改' if user else '学工平台密码' }}">
-            </div>
-
-            <div style="margin-bottom:16px;">
-                <label class="form-label">密保问题 <span style="color:var(--text-muted)">(选填)</span></label>
-                <input type="text" class="form-control" name="principal"
-                       value="{{ user.principal if user and user.principal else '' }}" placeholder="仅触发二次验证时需要">
-            </div>
-
-            <div style="margin-bottom:16px;">
-                <label class="form-label">密保答案 <span style="color:var(--text-muted)">(选填)</span></label>
-                <input type="text" class="form-control" name="credential"
-                       value="{{ user.credential if user and user.credential else '' }}" placeholder="密保问题的答案">
-            </div>
-
-            <div style="margin-bottom:16px;">
-                <label class="form-label">通知邮箱 <span style="color:var(--text-muted)">(选填)</span></label>
-                <input type="email" class="form-control" name="email"
-                       value="{{ user.email if user and user.email else '' }}" placeholder="查寝结果发送到此邮箱">
-            </div>
-
-            <div style="margin-bottom:20px;">
-                <label class="form-label">打卡时间 <span style="color:var(--danger)">*</span></label>
-                <p class="form-text" style="margin-bottom:10px;">可多选，系统会在每个选定时间自动查寝（北京时间）</p>
-                {% for expr, desc in presets.items() %}
-                <div class="form-check" style="margin-bottom:6px;">
-                    <input class="form-check-input" type="checkbox" name="cron_times"
-                           id="cron_{{ loop.index }}" value="{{ expr }}"
-                           {% if not user or expr in user.get_cron_times() %}checked{% endif %}>
-                    <label class="form-check-label" for="cron_{{ loop.index }}">
-                        {{ desc }}
-                    </label>
-                </div>
-                {% endfor %}
-
-                {# 显示已有但不在预设中的自定义时间 #}
-                {% if user %}
-                {% for t in user.get_cron_times() %}
-                {% if t not in presets %}
-                <div class="form-check" style="margin-bottom:6px;">
-                    <input class="form-check-input" type="checkbox" name="cron_times"
-                           id="cron_custom_{{ loop.index }}" value="{{ t }}" checked>
-                    <label class="form-check-label" for="cron_custom_{{ loop.index }}">
-                        自定义 {{ t.split()[1] }}:{{ t.split()[0].zfill(2) }}
-                    </label>
-                </div>
-                {% endif %}
-                {% endfor %}
-                {% endif %}
-
-                <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
-                    <input type="time" class="form-control" id="custom_time" name="custom_time"
-                           style="width:140px;" placeholder="HH:MM">
-                    <span class="form-text" style="margin:0;">选择自定义时间（北京时间）</span>
-                </div>
-                <p class="form-text">不选自定义时间则留空，选了预设+自定义会合并去重</p>
-            </div>
-
-            <div class="form-check" style="margin-bottom:24px;">
-                <input class="form-check-input" type="checkbox" id="enabled" name="enabled"
-                       {{ 'checked' if not user or user.enabled else '' }}>
-                <label class="form-check-label" for="enabled">启用定时任务</label>
-            </div>
-
-            <div style="display:flex;gap:10px;">
-                <button type="submit" class="btn btn-accent" style="flex:1;">保存</button>
-                <a href="{{ url_for('users.user_list') }}" class="btn btn-ghost" style="flex:1;text-align:center;">取消</a>
-            </div>
-        </form>
-    </div>
-</div>
+<div class="page-intro"><p>{{ '修改账号信息、通知设置和自动查寝时间。' if user else '添加一个新的学工平台查寝账号。' }}</p></div>
+<section class="form-panel"><form method="POST" class="managed-form">
+    <div class="form-section"><div class="section-heading"><h2>学工平台账号</h2><p>这里填写学工统一身份认证系统的账号和密码，用于登录学工平台执行查寝。<a href="https://ids.gzist.edu.cn/login" target="_blank" rel="noopener noreferrer">不记得密码了？前往学工系统找回密码</a></p></div><div class="form-fields account-fields"><div class="field"><label for="username">学工账号 <span class="required">*</span></label><input type="text" class="form-control" id="username" name="username" value="{{ user.username if user else '' }}" required placeholder="输入学工平台用户名"></div><div class="field"><label for="password">学工平台密码 {% if not user %}<span class="required">*</span>{% endif %}</label><input type="password" class="form-control" id="password" name="password" {{ 'required' if not user else '' }} placeholder="{{ '留空表示不修改' if user else '输入平台密码' }}"></div><p class="form-help password-help">密码会加密保存，不会明文展示。</p><div class="field field-wide"><label for="campus">查寝校区 <span class="required">*</span></label><select class="form-select" id="campus" name="campus" required><option value="">请选择校区</option>{% for value, label in campuses.items() %}<option value="{{ value }}" {% if (user and user.campus == value) or (not user and value == 'baiyun') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><p class="form-help">请选择该账号实际所属校区，系统将使用对应的地点参数。</p></div></div></div>
+    <div class="form-section"><div class="section-heading"><h2>密保和通知设置</h2><p>按平台需要填写密保信息，并接收执行结果。</p></div><div class="form-fields"><div class="field"><label for="principal">密保问题</label><input type="text" class="form-control" id="principal" name="principal" value="{{ user.principal if user and user.principal else '' }}" placeholder="选填"></div><div class="field"><label for="credential">密保答案</label><input type="text" class="form-control" id="credential" name="credential" value="{{ user.credential if user and user.credential else '' }}" placeholder="选填"></div><div class="field field-wide"><label for="email">通知邮箱</label><div class="input-action notification-email-action"><input type="email" class="form-control" id="email" name="email" value="{{ form_email if form_email is defined else (user.email if user and user.email else '') }}" placeholder="查寝结果发送到此邮箱"><button class="btn btn-ghost" type="button" id="send-notification-code">发送验证码</button></div><p class="form-help" id="notification-hint">填写后需验证邮箱；留空则不发送通知。</p></div><div class="field field-wide"><label for="notification_code">邮箱验证码</label><input type="text" class="form-control" id="notification_code" name="notification_code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="验证通知邮箱后填写 6 位验证码"><p class="form-help">修改已有通知邮箱时需要重新验证。</p></div></div></div>
+    <div class="form-section"><div class="section-heading"><h2>自动查寝时间</h2><p>可多选，系统按北京时间执行。</p></div><div class="schedule-fields"><div class="preset-grid">{% for expr, desc in presets.items() %}<label class="check-option"><input type="checkbox" name="cron_times" value="{{ expr }}" {% if not user or expr in user.get_cron_times() %}checked{% endif %}><span>{{ desc }}</span></label>{% endfor %}{% if user %}{% for t in user.get_cron_times() %}{% if t not in presets %}<label class="check-option"><input type="checkbox" name="cron_times" value="{{ t }}" checked><span>自定义 {{ t.split()[1].zfill(2) }}:{{ t.split()[0].zfill(2) }}</span></label>{% endif %}{% endfor %}{% endif %}</div><div class="custom-time"><label for="custom_time">添加自定义时间</label><input type="time" class="form-control" id="custom_time" name="custom_time"><span class="form-help">选填，保存后会与预设时间合并。</span></div><label class="check-option enabled-option"><input type="checkbox" id="enabled" name="enabled" {{ 'checked' if not user or user.enabled else '' }}><span>启用定时任务</span></label></div></div>
+    <div class="form-actions"><a href="{{ url_for('users.user_list') }}" class="btn btn-ghost">取消</a><button type="submit" class="btn btn-accent">保存</button></div>
+</form></section>
 {% endblock %}
+{% block scripts %}<script>
+(function () {
+    var button = document.getElementById('send-notification-code');
+    if (!button) return;
+    var email = document.getElementById('email');
+    var hint = document.getElementById('notification-hint');
+    button.addEventListener('click', async function () {
+        if (!email.checkValidity()) { email.reportValidity(); return; }
+        button.disabled = true; button.textContent = '发送中…'; hint.textContent = '正在发送验证码…'; hint.classList.remove('form-success', 'form-error');
+        try {
+            var response = await fetch('{{ url_for("users.send_notification_code") }}', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, body: new URLSearchParams({ email: email.value }) });
+            var data = await response.json(); hint.textContent = data.message; hint.classList.add(data.ok ? 'form-success' : 'form-error');
+            if (data.ok) { button.textContent = '60 秒后重试'; var left = 60; var timer = setInterval(function () { left -= 1; button.textContent = left > 0 ? left + ' 秒后重试' : '发送验证码'; if (left <= 0) { clearInterval(timer); button.disabled = false; } }, 1000); } else { button.disabled = false; button.textContent = '发送验证码'; }
+        } catch (error) { hint.textContent = '请求失败，请检查网络后重试'; hint.classList.add('form-error'); button.disabled = false; button.textContent = '发送验证码'; }
+    });
+}());
+</script>{% endblock %}
