@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}账号管理 - 查寝管理系统{% endblock %}
+{% block page_title %}账号管理{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('users.user_list') }}" class="btn btn-ghost">返回用户管理</a>
+{% endblock %}
+{% block content %}
+<div class="page-intro"><p>管理所有登录账号，查看每个账号的查寝用户数量和执行状态。</p></div>
+<section class="stats-grid" aria-label="数据概览">
+    <div class="stat-card"><span class="stat-label">总账号数</span><strong>{{ stats.total_accounts }}</strong><span class="stat-detail">全部登录账号</span></div>
+    <div class="stat-card"><span class="stat-label">管理员账号</span><strong>{{ stats.admin_accounts }}</strong><span class="stat-detail">具有管理权限</span></div>
+    <div class="stat-card"><span class="stat-label">普通用户</span><strong>{{ stats.user_accounts }}</strong><span class="stat-detail">普通权限</span></div>
+    <div class="stat-card"><span class="stat-label">已启用账号</span><strong>{{ stats.enabled_accounts }}</strong><span class="stat-detail"><span class="status-dot active"></span>可以登录</span></div>
+</section>
+{% if account_stats %}
+<section class="table-panel"><div class="table-scroll"><table class="data-table"><thead><tr><th>邮箱</th><th>角色</th><th>查寝账号数</th><th>成功率</th><th>最近活动</th><th>状态</th><th class="actions-col">操作</th></tr></thead><tbody>
+{% for item in account_stats %}
+{% set account = item.account %}
+<tr id="row-{{ account.id }}">
+<td>
+<strong class="table-primary">{{ account.email }}</strong>
+<span class="table-note">注册于 {{ account.created_at.strftime('%Y-%m-%d') }}</span>
+</td>
+<td>
+{% if account.role == 'admin' %}
+<span class="badge badge-accent">管理员</span>
+{% else %}
+<span class="badge badge-muted">普通用户</span>
+{% endif %}
+</td>
+<td>
+<strong>{{ item.user_count }}</strong> 个
+{% if item.enabled_user_count < item.user_count %}
+<span class="table-note">({{ item.enabled_user_count }} 个已启用)</span>
+{% endif %}
+</td>
+<td>
+{% if item.user_count > 0 %}
+<strong>{{ item.success_rate }}%</strong>
+<span class="table-note">最近 10 次</span>
+{% else %}
+<span class="text-muted">-</span>
+{% endif %}
+</td>
+<td>
+{% if item.last_activity %}
+{{ item.last_activity.strftime('%m-%d %H:%M') }}
+{% else %}
+<span class="text-muted">无活动</span>
+{% endif %}
+</td>
+<td>
+<span class="status-text">
+<span class="status-dot {{ 'active' if account.enabled else 'inactive' }}"></span>
+{{ '已启用' if account.enabled else '已禁用' }}
+</span>
+</td>
+<td>
+<div class="row-actions">
+{% if item.user_count > 0 %}
+<a href="{{ url_for('admin.account_users', account_id=account.id) }}" class="btn btn-ghost btn-sm">查看用户</a>
+{% endif %}
+{% if account.id != current_user.id %}
+<form method="POST" action="{{ url_for('admin.account_toggle', account_id=account.id) }}">
+<button class="btn btn-ghost btn-sm" type="submit">{{ '禁用' if account.enabled else '启用' }}</button>
+</form>
+<form method="POST" action="{{ url_for('admin.account_delete', account_id=account.id) }}" onsubmit="return confirm('确定删除账号 {{ account.email }}？\n\n此操作会同时删除该账号下的所有查寝用户（{{ item.user_count }} 个），且不可撤销。')">
+<button class="btn btn-danger-ghost btn-sm" type="submit">删除</button>
+</form>
+{% else %}
+<span class="text-muted">当前账号</span>
+{% endif %}
+</div>
+</td>
+</tr>
+{% endfor %}
+</tbody></table></div></section>
+{% else %}
+<div class="empty-state">
+<div class="empty-icon">👥</div>
+<h3>暂无账号</h3>
+<p>系统中还没有任何账号。</p>
+</div>
+{% endif %}
+{% endblock %}

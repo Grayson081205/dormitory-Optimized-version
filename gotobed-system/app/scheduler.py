@@ -1,12 +1,27 @@
 import logging
+import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 logger = logging.getLogger(__name__)
 
-scheduler = BackgroundScheduler(timezone='Asia/Shanghai')
+# 同一时间触发的任务进入队列等待，不因默认的一秒宽限期而丢失。
+try:
+    _scheduler_workers = max(1, int(os.environ.get('SCHEDULER_MAX_WORKERS', '20')))
+except ValueError:
+    _scheduler_workers = 20
+
+scheduler = BackgroundScheduler(
+    timezone='Asia/Shanghai',
+    executors={'default': ThreadPoolExecutor(max_workers=_scheduler_workers)},
+    job_defaults={
+        'coalesce': False,
+        'misfire_grace_time': None,
+    },
+)
 _jobs = {}  # user_id -> [job_id1, job_id2, ...]  一个用户可有多个定时任务
 _app = None  # 保存 app 引用
 
@@ -37,6 +52,7 @@ def _execute_gotobed(user_id: int):
             principal=user.principal,
             credential=user.credential,
             email=user.email,
+            campus=user.campus,
         )
 
         log = Log(

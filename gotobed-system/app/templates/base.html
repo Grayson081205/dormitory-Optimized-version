@@ -3,51 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b0d10">
     <title>{% block title %}查寝管理系统{% endblock %}</title>
+    <script>
+        // 在页面绘制前恢复主题，避免刷新时出现白色闪烁。
+        (function () {
+            var theme = localStorage.getItem('gotobed-theme') || 'dark';
+            document.documentElement.dataset.theme = theme;
+        }());
+    </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body{% if current_user.is_authenticated %} class="app-layout"{% endif %}>
-    {% if current_user.is_authenticated %}
-    <aside class="sidebar">
-        <div class="sidebar-brand">
-            <h1><span class="brand-dot"></span>查寝管理</h1>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="{{ url_for('users.user_list') }}" class="{{ 'active' if request.endpoint and 'users' in request.endpoint }}">
-                <span>👤</span> 用户管理
-            </a>
-            <a href="{{ url_for('logs.log_list') }}" class="{{ 'active' if request.endpoint and 'logs' in request.endpoint }}">
-                <span>📋</span> 执行日志
-            </a>
-        </nav>
-        <div class="sidebar-footer">
-            <a href="{{ url_for('auth.logout') }}">⏻ 退出登录</a>
-        </div>
-    </aside>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container{% if current_user.is_authenticated %} flash-authenticated{% endif %}" aria-live="polite">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">
+        <span class="alert-mark">{% if category == 'success' %}✓{% else %}!{% endif %}</span>
+        <span>{{ message }}</span>
+        <button type="button" class="btn-close" aria-label="关闭提示">×</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
 
-    <main class="main-content">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        {% endfor %}
+{% if current_user.is_authenticated %}
+<div class="mobile-topbar">
+    <button class="icon-button" type="button" id="menu-toggle" aria-label="打开导航">☰</button>
+    <a class="mobile-brand" href="{{ url_for('users.user_list') }}"><span class="brand-mark">✦</span>查寝管理</a>
+    <button class="icon-button" type="button" data-theme-toggle aria-label="切换主题">◐</button>
+</div>
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <a href="{{ url_for('users.user_list') }}"><span class="brand-mark">✦</span><span>查寝管理</span></a>
+    </div>
+    <nav class="sidebar-nav" aria-label="主导航">
+        <a href="{{ url_for('users.user_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('users.') else '' }}">
+            <span class="nav-icon">⌂</span><span>学工平台账号管理</span>
+        </a>
+        <a href="{{ url_for('logs.log_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('logs.') else '' }}">
+            <span class="nav-icon">≡</span><span>执行日志</span>
+        </a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.account_management') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.') else '' }}">
+            <span class="nav-icon">👥</span><span>账号管理</span>
+        </a>
         {% endif %}
-        {% endwith %}
+    </nav>
+    <div class="sidebar-bottom">
+        <button class="theme-button" type="button" data-theme-toggle><span class="nav-icon">◐</span><span>切换主题</span><span class="theme-label" data-theme-label>浅色</span></button>
+        <div class="account-chip"><span class="avatar">{{ (current_user.email[0] if current_user.email else 'U')|upper }}</span><span class="account-email" title="{{ current_user.email }}">{{ current_user.email }}</span></div>
+        <a class="logout-link" href="{{ url_for('auth.logout') }}"><span class="nav-icon">↪</span>退出登录</a>
+    </div>
+</aside>
+<main class="main-content">
+    <header class="topbar">
+        <div><div class="eyebrow">查寝管理系统</div><h1>{% block page_title %}{% if request.endpoint and request.endpoint.startswith('logs.') %}执行日志{% elif request.endpoint and request.endpoint.startswith('admin.') %}账号管理{% else %}学工平台账号管理{% endif %}{% endblock %}</h1></div>
+        <div class="topbar-actions">{% block page_actions %}{% endblock %}</div>
+    </header>
+    <div class="content-shell">{% block content %}{% endblock %}</div>
+</main>
+{% else %}
+<button class="auth-theme-toggle icon-button" type="button" data-theme-toggle aria-label="切换主题">◐</button>
+{% block fullpage %}{% endblock %}
+{% endif %}
 
-        {% block content %}{% endblock %}
-    </main>
-    {% else %}
-    {% block fullpage %}{% endblock %}
-    {% endif %}
-
-    <script>
-    document.querySelectorAll('.btn-close').forEach(btn => {
-        btn.addEventListener('click', () => btn.parentElement.remove());
+<script>
+    document.querySelectorAll('.btn-close').forEach(function (button) {
+        button.addEventListener('click', function () { button.closest('.alert').remove(); });
     });
-    </script>
-    {% block scripts %}{% endblock %}
+    var sidebar = document.getElementById('sidebar');
+    var backdrop = document.getElementById('sidebar-backdrop');
+    var menuToggle = document.getElementById('menu-toggle');
+    function closeSidebar() { if (sidebar) sidebar.classList.remove('open'); if (backdrop) backdrop.classList.remove('visible'); }
+    if (menuToggle) menuToggle.addEventListener('click', function () { sidebar.classList.toggle('open'); backdrop.classList.toggle('visible'); });
+    if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = next;
+            localStorage.setItem('gotobed-theme', next);
+            document.querySelectorAll('[data-theme-label]').forEach(function (label) { label.textContent = next === 'light' ? '深色' : '浅色'; });
+        });
+    });
+    document.querySelectorAll('[data-theme-label]').forEach(function (label) { label.textContent = document.documentElement.dataset.theme === 'light' ? '深色' : '浅色'; });
+</script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

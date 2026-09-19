@@ -9,3 +9,4 @@ dnspython>=2.4
 pytz>=2024
 cryptography>=42.0
 gunicorn>=22.0
+python-dotenv>=1.0

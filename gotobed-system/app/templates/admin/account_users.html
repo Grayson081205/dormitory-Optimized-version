@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ account.email }} 的查寝用户 - 查寝管理系统{% endblock %}
+{% block page_title %}{{ account.email }} 的查寝用户{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('admin.account_management') }}" class="btn btn-ghost">返回账号列表</a>
+{% endblock %}
+{% block content %}
+<div class="page-intro">
+    <p>查看账号 <strong>{{ account.email }}</strong> 下的所有学工平台查寝用户。</p>
+    <div class="account-info-card">
+        <div><strong>角色：</strong>{% if account.role == 'admin' %}<span class="badge badge-accent">管理员</span>{% else %}<span class="badge badge-muted">普通用户</span>{% endif %}</div>
+        <div><strong>状态：</strong><span class="status-text"><span class="status-dot {{ 'active' if account.enabled else 'inactive' }}"></span>{{ '已启用' if account.enabled else '已禁用' }}</span></div>
+        <div><strong>注册时间：</strong>{{ account.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        <div><strong>查寝用户数：</strong>{{ user_details|length }} 个</div>
+    </div>
+</div>
+{% if user_details %}
+<section class="table-panel"><div class="table-scroll"><table class="data-table"><thead><tr><th>学工账号</th><th>校区</th><th>通知邮箱</th><th>执行时间</th><th>状态</th><th>最近执行</th><th class="actions-col">操作</th></tr></thead><tbody>
+{% for item in user_details %}
+{% set user = item.user %}
+{% set last_log = item.last_log %}
+<tr id="row-{{ user.id }}">
+<td>
+<strong class="table-primary">{{ user.username }}</strong>
+{% if user.principal %}
+<span class="table-note">密保已配置</span>
+{% endif %}
+</td>
+<td>{{ '惠州校区' if user.campus == 'huizhou' else '白云校区' }}</td>
+<td>{{ user.email or '未设置' }}</td>
+<td>
+<div class="time-list">
+{% for t in user.get_cron_times() %}
+<span>{{ t.split()[1].zfill(2) }}:{{ t.split()[0].zfill(2) }}</span>
+{% endfor %}
+</div>
+</td>
+<td>
+<span class="status-text">
+<span class="status-dot {{ 'active' if user.enabled else 'inactive' }}"></span>
+{{ '已启用' if user.enabled else '已禁用' }}
+</span>
+</td>
+<td>
+{% if last_log %}
+<span class="result-text {{ 'result-success' if last_log.status == 'success' else 'result-failure' }}">{{ '成功' if last_log.status == 'success' else '失败' }}</span>
+<span class="table-note">{{ last_log.executed_at.strftime('%m-%d %H:%M') }}</span>
+<div class="table-note">{{ last_log.message[:50] }}{% if last_log.message|length > 50 %}...{% endif %}</div>
+{% else %}
+<span class="text-muted">暂无记录</span>
+{% endif %}
+</td>
+<td>
+<div class="row-actions">
+<a href="{{ url_for('users.user_edit', user_id=user.id) }}" class="btn btn-ghost btn-sm">编辑</a>
+<form method="POST" action="{{ url_for('users.user_toggle', user_id=user.id) }}">
+<button class="btn btn-ghost btn-sm" type="submit">{{ '禁用' if user.enabled else '启用' }}</button>
+</form>
+</div>
+</td>
+</tr>
+{% endfor %}
+</tbody></table></div></section>
+{% else %}
+<div class="empty-state">
+<div class="empty-icon">📋</div>
+<h3>该账号下暂无查寝用户</h3>
+<p>{{ account.email }} 还没有添加任何学工平台查寝账号。</p>
+</div>
+{% endif %}
+{% endblock %}
