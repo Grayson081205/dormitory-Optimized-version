@@ -42,11 +42,16 @@
     </div>
     <nav class="sidebar-nav" aria-label="主导航">
         <a href="{{ url_for('users.user_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('users.') else '' }}">
-            <span class="nav-icon">⌂</span><span>用户管理</span>
+            <span class="nav-icon">⌂</span><span>学工平台账号管理</span>
         </a>
         <a href="{{ url_for('logs.log_list') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('logs.') else '' }}">
             <span class="nav-icon">≡</span><span>执行日志</span>
         </a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.account_management') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.') else '' }}">
+            <span class="nav-icon">👥</span><span>账号管理</span>
+        </a>
+        {% endif %}
     </nav>
     <div class="sidebar-bottom">
         <button class="theme-button" type="button" data-theme-toggle><span class="nav-icon">◐</span><span>切换主题</span><span class="theme-label" data-theme-label>浅色</span></button>
@@ -56,7 +61,7 @@
 </aside>
 <main class="main-content">
     <header class="topbar">
-        <div><div class="eyebrow">查寝管理系统</div><h1>{% block page_title %}{% if request.endpoint and request.endpoint.startswith('logs.') %}执行日志{% else %}用户管理{% endif %}{% endblock %}</h1></div>
+        <div><div class="eyebrow">查寝管理系统</div><h1>{% block page_title %}{% if request.endpoint and request.endpoint.startswith('logs.') %}执行日志{% elif request.endpoint and request.endpoint.startswith('admin.') %}账号管理{% else %}学工平台账号管理{% endif %}{% endblock %}</h1></div>
         <div class="topbar-actions">{% block page_actions %}{% endblock %}</div>
     </header>
     <div class="content-shell">{% block content %}{% endblock %}</div>
